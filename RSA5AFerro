@@ -1,0 +1,101 @@
+/*1) Generare le chiavi (pubblica e privata) seguendo le istruzioni di RSA;
+2) Criptare un testo in chiaro (anche fisso, ma preferibilmente preso da input);
+3) Decriptare un testo criptato e renderlo leggibile;
+
+Utilizzare se possibile i log (potete partire dal progetto con maven e log4j mostrato), utilizzare GitHub e caricare un link al proprio progetto.
+Vanno bene coppie da 2, utilizzare il linguaggio di programmazione che si preferisce per il progetto client/server. (default java)
+Si possono usare tutte le librerie desiderate, fuorche' librerie che si occupano della generazione delle chiavi RSA.
+Utilizzare BigInteger o simili per poter gestire grandi numeri che andrebbero in overflow. */
+
+import java.math.BigInteger;
+import java.util.Scanner;
+
+public class main {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        rsa rsa = new rsa(); 
+        rsa.CalcolaPQ();
+
+        System.out.println("\nInserisci testo da crittografare: ");
+        String testoInChiaro = scanner.nextLine();
+
+        // Cripta il messaggio
+        BigInteger messaggioCriptato = rsa.criptare(testoInChiaro);
+        System.out.println("Messaggio criptato: " + messaggioCriptato);
+
+        // Decripta il messaggio
+        String messaggioDecriptato = rsa.decriptare(messaggioCriptato);
+        System.out.println("Messaggio decriptato: " + messaggioDecriptato);
+
+        scanner.close();
+    }
+}
+
+
+import java.math.BigInteger;
+import java.security.SecureRandom;
+
+public class rsa {
+    private BigInteger n;
+    private BigInteger e;
+    private BigInteger d;
+
+    // genera numeri primi casuali
+    private BigInteger generaNumeroPrimo(int bitLength) {
+        SecureRandom random = new SecureRandom();
+        return BigInteger.probablePrime(bitLength, random);
+    }
+
+    public void CalcolaPQ() {
+        // numeri primi casuali p e q
+        BigInteger p = generaNumeroPrimo(512); // 512 bit per p
+        BigInteger q = generaNumeroPrimo(512); // 512 bit per q
+        System.out.println("p: " + p);
+        System.out.println("q: " + q);
+
+        // n = p * q
+        n = p.multiply(q);
+        System.out.println("n: " + n);
+
+        //Eulero (p-1) * (q-1)
+        BigInteger eulero = (p.subtract(BigInteger.ONE)).multiply(q.subtract(BigInteger.ONE));
+        System.out.println("φ(n): " + eulero);
+
+        // esponente coprimo con eulero
+        e = scegliEsponente(eulero);
+        System.out.println("Esponente pubblico (e): " + e);
+
+        d = calcolaEsponentePriv(e, eulero);
+        System.out.println("Esponente privato (d): " + d);
+
+        System.out.println("\nLa chiave pubblica è: (" + e + ", " + n + ")");
+        System.out.println("La chiave privata è: (" + d + ", " + n + ")");
+    }
+
+    //Funzione coprimo
+    private BigInteger scegliEsponente(BigInteger eulero) {
+        BigInteger e = BigInteger.valueOf(17); // Valore di partenza
+
+        while (!e.gcd(eulero).equals(BigInteger.ONE)) {
+            e = e.add(BigInteger.TWO); // Incrementa di 2 per mantenere e dispari
+        }
+        return e;
+    }
+
+    // Calcola l'esponente privato d
+    private BigInteger calcolaEsponentePriv(BigInteger e, BigInteger eulero) {
+        return e.modInverse(eulero);
+    }
+
+    // criptare
+    public BigInteger criptare(String testoInChiaro) {
+        BigInteger messaggio = new BigInteger(testoInChiaro.getBytes());
+        return messaggio.modPow(e, n);
+    }
+
+    // decrypt
+    public String decriptare(BigInteger testoCriptato) {
+        BigInteger messaggioDecriptato = testoCriptato.modPow(d, n);
+        return new String(messaggioDecriptato.toByteArray());
+    }
+}
